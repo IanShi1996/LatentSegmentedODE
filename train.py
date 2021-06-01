@@ -118,7 +118,8 @@ class TrainingLoop:
 
             if verbose:
                 if scheduler:
-                    print("Current LR: {}".format(scheduler.get_last_lr()))
+                    print("Current LR: {}".format(scheduler.get_last_lr()),
+                          flush=True)
                 if plt_loss:
                     self.plot_loss()
                 self.print_loss(epoch)
@@ -132,7 +133,8 @@ class TrainingLoop:
 
     def print_loss(self, epoch):
         print('Epoch: {}, Train ELBO: {:.3f}, Val ELBO: {:.3f}'.format(
-            epoch, -self.train_loss_meter.avg, -self.val_loss_meter.avg))
+              epoch, -self.train_loss_meter.avg, -self.val_loss_meter.avg),
+              flush=True)
 
     def plot_loss(self):
         train_range = range(len(self.train_loss_hist))

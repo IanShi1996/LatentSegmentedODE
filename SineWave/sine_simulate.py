@@ -260,14 +260,14 @@ def generate_classwise_sine(tp, n_traj, amps, freqs, phases, noise):
 
 
 def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
-                            cp_min, amp_min, end=None, manual_tp=None):
+                            cp_min, amp_min, noise, end=None, manual_tp=None):
     """Generate a trajectory composed of piecewise sine waves.
 
     Each segment is generated using a sine wave with parameters sampled from
     a uniform distribution specified by method arguments. Trajectories
     must satisfy several conditions:
 
-    1. Changepoints must be further than a minimum distance from the ends of
+    1. Change points must be further than a minimum distance from the ends of
        the trajectory as well as each other.
     2. Amplitudes must be at least a certain magnitude apart. This prevents
        segments being reflections of each other, essentially meaning the
@@ -280,12 +280,13 @@ def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
 
     Args:
         n_samp (int): Number of samples per trajectory.
-        n_cp (int): Number of changepoints.
+        n_cp (int): Number of change points.
         amp_range (float, float): Minimum and maximum possible amplitude.
         freq_range (float, float): Minimum and maximum possible frequency.
         phase_flag (boolean): Whether phase modulation should be included.
-        cp_min (float): Minimum distance between changepoints.
+        cp_min (float): Minimum distance between change points.
         amp_min (float): Minimum absolute difference between segment amplitude.
+        noise (float): Standard deviation of injected random noise.
         end (float, optional): Last observed time point.
         manual_tp (np.ndarray, optional): Time points to evaluate sine wave.
 
@@ -336,7 +337,7 @@ def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
     for i in range(n_cp+1):
         amp = amps[i]
         freq = freqs[i]
-        length = cps[i+1] - cps[i]
+        length = int(cps[i+1] - cps[i])
 
         if manual_tp is not None:
             tp = manual_tp[:length]
@@ -348,7 +349,7 @@ def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
         else:
             phase = 0
 
-        d = transform_sine(tp, freq, amp, phase).flatten()
+        d = transform_sine(tp, freq, amp, phase, noise=noise).flatten()
 
         # Starts time from last observed time
         if i > 0:
@@ -362,16 +363,16 @@ def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
     return traj_time, traj_data, cps
 
 
-def generate_test_set(generator_params, max_cp, n_traj):
+def generate_test_set(generator_params, max_cp, n_traj, seg_samp, seg_len):
     """ Generate piecewise 1D sine trajectories as test data.
 
     Certain relaxations are typically made. These include:
       - Setting freq and amp ranges to match ranges in the model training set.
       - Setting a minimum change in amplitude between segments.
       - Setting a minimum absolute amplitude (must not be near zero).
-      - Setting a minimum distance between changepoints.
+      - Setting a minimum distance between change points.
       - Setting a minimum number of samples per segment.
-      - Increasing minimum length per segment with number of changepoints.
+      - Increasing minimum length per segment with number of change points.
 
     Opt to not inject noise at this stage. This allows for easier downstream
     testing of model sensitivity to noise.
@@ -381,20 +382,22 @@ def generate_test_set(generator_params, max_cp, n_traj):
             generate_piecewise_sine for required keys.
         max_cp (int): Maximum number of change points in data set.
         n_traj (int): Number of trajectories for each change point sub set.
+        seg_samp (int): Samples per segment.
+        seg_len (float): Length of each segment.
 
     Returns:
         (list of (data, tps, cps)): Test dataset. Each tuple contains the data,
             time points, and change points associated with each trajectory.
     """
-
     data = []
 
     for cp in range(max_cp + 1):
         for _ in range(n_traj):
-            length = max((cp+1) * 2, 4)
-            n_samps = max(125, (cp+1) * 75)
+            length = max(seg_len * 0.5, (cp+1) * seg_len * 0.5)
+            n_samps = max(seg_samp, (cp+1) * int(seg_samp * 0.75))
 
-            traj = generate_piecewise_sine(n_samps, cp, **generator_params,
+            traj = generate_piecewise_sine(n_samps, cp,
+                                           **generator_params,
                                            end=length)
             out = (traj[1].reshape((1, -1, 1)), traj[0], traj[2])
             data.append(out)
