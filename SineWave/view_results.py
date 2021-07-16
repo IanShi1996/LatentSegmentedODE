@@ -1,17 +1,16 @@
 import argparse
-import sys, os
+import os
+import sys
 
 from pathlib import Path
 
+from ruptures.metrics import randindex
 import torch
-torch.autograd.set_grad_enabled(False)
-
-import numpy as np
 
 sys.path.append(os.path.abspath('..'))
-from metrics import randindex, f1_score, hausdorff, annotation_error, evaluate_metrics
-from utils import to_np, gpu_f
+from metrics import *
 
+torch.autograd.set_grad_enabled(False)
 device = torch.device('cuda:0')
 
 parser = argparse.ArgumentParser(description="Evaluate Sine Wave results.")
@@ -38,5 +37,3 @@ seg_node_data = evaluate_metrics(metrics, rr_pred, rr_true)
 
 for k, v in seg_node_data.items():
     print('{}: {}'.format(k, np.mean(v)))
-    
-    

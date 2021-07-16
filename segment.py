@@ -33,7 +33,7 @@ def reparameterize(epsilon, qz0_mean, qz0_logvar):
 
 def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
                             noise_var=1, fixed_eps=None):
-    """Perform parallel estimation of logpx through MC sampling.
+    """Estimate log marginal likelihood through parallel MC sampling.
 
     Computes Monte Carlo importance sampling estimation of log p(x).
     Several observations are exploited to allow combination of segments into
@@ -72,7 +72,7 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
         fixed_eps (torch.Tensor): Noise used for reparameterization.
 
     Returns:
-        float: Estimated log p(x) of segment.
+        list of float: Estimated log p(x) of segment.
     """
     mask = get_mask_array(seg_len, cps).to(data.device)
 
@@ -171,21 +171,21 @@ def segment(data, tp, model, n_samp, min_seg_len, K, n_decimal,
     performance.
 
     Args:
-        data (np.ndarray): Input data.
-        tp (np.ndarray): Observation times of input data.
+        data (torch.Tensor): Input data.
+        tp (torch.Tensor): Observation times of input data.
         model (nn.Module): Latent NODE used to perform reconstructions.
         n_samp (int): Number of MC samples used to estimate score.
         min_seg_len (int): Minimum length of segment to consider.
         K (float): Term used to relax pruning condition.
         n_decimal (int): Decimal precision used in timepoint delta calculation.
-        noise_var (float): Fixed varianced used to calculate loss.
+        noise_var (float): Fixed variance used to calculate loss.
         fixed_noise (boolean): Whether fixed noise should be used.
         latent_dim (int): Dim. of latent. Only required is fixed noise is used.
 
     Returns:
         np.ndarray: Matrix containing all segment scores.
     """
-    length = data.size()[1]
+    length = data.shape[1]
 
     score = np.zeros((length, length))
     score.fill(np.inf)
@@ -285,7 +285,7 @@ def get_tp_map(tp, seg_len, cps, n_decimal):
 
     Computes all time trajectories as if they started from zero. This is done
     by computing the set of all possible time deltas, and which is combined
-    to allow for fast sequential evaluatation via ode solve. These deltas
+    to allow for fast sequential evaluation via ode solve. These deltas
     can then be reconstructed according to their input hidden state.
 
     Time deltas are truncated to n decimal places for computational speedup.

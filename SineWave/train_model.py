@@ -9,14 +9,14 @@ import numpy as np
 
 import torch
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 sys.path.append(os.path.abspath('..'))
 
 from augment import aug_add_noise, aug_subsample, aug_crop_start
 from model import LatentODEBuilder
 from train import TrainingLoop
-from utils import gpu_f, to_np, RunningAverageMeter
+from utils import gpu_f
 from sine_utils import SineSet
 
 np.random.seed(2547)

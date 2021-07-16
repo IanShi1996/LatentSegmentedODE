@@ -1,4 +1,5 @@
-import sys, os
+import os
+import sys
 import argparse
 from pathlib import Path
 
@@ -9,7 +10,6 @@ from sine_utils import run_sine_segmentation
 
 sys.path.append(os.path.abspath('..'))
 from model import LatentODEBuilder
-from utils import gpu_f, to_np
 
 np.random.seed(2547)
 
@@ -18,7 +18,8 @@ device = torch.device('cuda:0')
 # Disables autograd, reduces memory usage
 torch.autograd.set_grad_enabled(False)
 
-parser = argparse.ArgumentParser(description="Evaluate trained model on Sine Wave data.")
+des = "Evaluate trained model on Sine Wave data."
+parser = argparse.ArgumentParser(description=des)
 parser.add_argument("--model_file", type=str)
 parser.add_argument("--data_file", type=str)
 parser.add_argument("--n_samp", type=int, default=100)
@@ -60,6 +61,7 @@ results = {
 }
 
 output_root.mkdir(parents=True, exist_ok=True)
-output_fn = "results_{}_{}_{}_{}".format(args.model_file, args.data_file, args.n_samp, args.min_seg_len)
+output_fn = "results_{}_{}_{}_{}".format(args.model_file, args.data_file,
+                                         args.n_samp, args.min_seg_len)
 
 torch.save(results, output_root / Path(output_fn))

@@ -300,8 +300,9 @@ def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
     if end is None and manual_tp is None:
         raise ValueError("Either end or manual_tp must be specified.")
 
-    valid_cp = False
+    amps, cps = None, None
 
+    valid_cp = False
     while not valid_cp:
         cps = np.sort(np.random.choice(np.arange(cp_min, n_samp-cp_min), n_cp))
         cps = np.concatenate(([0], cps, [n_samp]), 0)
@@ -316,7 +317,6 @@ def generate_piecewise_sine(n_samp, n_cp, amp_range, freq_range, phase_flag,
                 valid_cp = False
 
     valid_amp = False
-
     while not valid_amp:
         amps = np.random.uniform(amp_range[0], amp_range[1], n_cp+1)
 

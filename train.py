@@ -7,6 +7,8 @@ from utils import RunningAverageMeter
 
 
 class TrainingLoop:
+    """Generic training loop for LatSegODE experiments."""
+
     def __init__(self, model, train_loader, val_loader, plot_func=None,
                  loss_meters=None, loss_hists=None):
         """Initialize main training loop for Neural ODE model.
@@ -17,8 +19,8 @@ class TrainingLoop:
 
         Args:
             model (nn.Module): Model to train.
-            train_loader (torch.utils.data.Dataloader): Training data loader.
-            val_loader (torch.utils.data.Dataloader): Validation data loader.
+            train_loader (torch.utils.data.Dataloader): Training dataloader.
+            val_loader (torch.utils.data.Dataloader): Validation dataloader.
             plot_func (function): Function used to plot predictions.
             loss_meters (RunningAverageMeter, RunningAverageMeter):
                 Existing training / val loss average meters.
@@ -39,6 +41,11 @@ class TrainingLoop:
         self.execution_arg_history = []
 
     def init_loss_history(self, loss_hist):
+        """Initialize lists tracking training and validation loss history.
+
+        Args:
+            loss_hist (list, list): Previous history. Optional.
+        """
         if loss_hist is None:
             self.train_loss_hist = []
             self.val_loss_hist = []
@@ -47,6 +54,12 @@ class TrainingLoop:
             self.val_loss_hist = loss_hist[1]
 
     def init_loss_meter(self, loss_meters):
+        """Initialize running loss meters for training and validation loss.
+
+        Args:
+            loss_meters (RunningAverageMeter, RunningAverageMeter):
+                Previous loss meters.
+        """
         if loss_meters is None:
             self.train_loss_meter = RunningAverageMeter()
             self.val_loss_meter = RunningAverageMeter()
@@ -125,6 +138,11 @@ class TrainingLoop:
                 self.print_loss(epoch)
 
     def update_val_loss(self, noise_std):
+        """Compute validation loss and update loss meter.
+
+        Args:
+            noise_std (float): Standard deviation for likelihood calculation.
+        """
         val_data_tt, val_tp_tt = next(iter(self.val_loader))
         val_out = self.model.forward(val_data_tt, val_tp_tt[0])[:3]
         val_elbo = self.model.get_elbo(val_data_tt, *val_out, noise_std)
@@ -132,11 +150,13 @@ class TrainingLoop:
         self.val_loss_meter.update(val_elbo.item())
 
     def print_loss(self, epoch):
+        """Print train and validation losses."""
         print('Epoch: {}, Train ELBO: {:.3f}, Val ELBO: {:.3f}'.format(
               epoch, -self.train_loss_meter.avg, -self.val_loss_meter.avg),
               flush=True)
 
     def plot_loss(self):
+        """Plot training and validation loss history."""
         train_range = range(len(self.train_loss_hist))
         val_range = range(len(self.val_loss_hist))
         plt.plot(train_range, self.train_loss_hist, label='train')
@@ -145,5 +165,6 @@ class TrainingLoop:
         plt.show()
 
     def plot_val_traj(self, args):
+        """Plot validation trajectory reconstructions."""
         val_data_tt, val_tp_tt = next(iter(self.val_loader))
         self.plot_func(self.model, val_data_tt, val_tp_tt, **args)

@@ -28,7 +28,7 @@ def to_np(x):
     and converts the array to a numpy ndarray.
 
     Args:
-        x (torch.Tensor): PyTorch tensor to conver to numpy ndarray.
+        x (torch.Tensor): PyTorch tensor to convert to numpy ndarray.
 
     Returns:
         np.ndarray: Numpy representation of input tensor.
@@ -50,7 +50,8 @@ class RunningAverageMeter(object):
             momentum (float, optional): Momentum coefficient. Defaults to 0.99.
         """
         self.momentum = momentum
-        self.reset()
+        self.val = None
+        self.avg = 0
 
     def reset(self):
         """Reset running average to zero."""

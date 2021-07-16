@@ -1,20 +1,34 @@
-import sys, os
+import sys
+import os
 from torch.utils.data import Dataset
 
 sys.path.append(os.path.abspath('..'))
 from segment import segment, get_changepoints
-from utils import gpu_f, to_np
+from utils import gpu_f
+
 
 class SineSet(Dataset):
+    """Custom PyTorch dataset for sine wave data."""
     def __init__(self, data, time):
+        """Initialize SineSet.
+
+        Args:
+            data (torch.Tensor): Dataset.
+            time (torch.Tensor): Timepoints.
+        """
         self.data = data
         self.time = time
+
     def __len__(self):
+        """Return length of dataset."""
         return len(self.data)
+
     def __getitem__(self, idx):
+        """Get data and timepoints by index."""
         return self.data[idx], self.time
-    
-def run_sine_segmentation(data, model, n_samp, min_seg_len, K, n_decimal, noise_var):
+
+
+def run_sine_segmentation(data, model, n_samp, min_seg, K, n_dec, noise_var):
     """Segmentation main loop for Sine Wave data.
     
     Runs segmentation and persists results.
@@ -22,10 +36,10 @@ def run_sine_segmentation(data, model, n_samp, min_seg_len, K, n_decimal, noise_
     Args:
         data (dict): Dict containing data, timepoints, and true changepoints.
         model (nn.Module): PyTorch Latent NODE model.
-        n_samp (int): Number of MC samples to use to estimate logpx.
-        min_seg_len (int): Minimum length of valid segment for PELT.
+        n_samp (int): Number of MC samples to use to estimate log_px.
+        min_seg (int): Minimum length of valid segment for PELT.
         K (float): Relaxation term on PELT penalty.
-        n_decimal: Decimal precision used for parallel estimation step.
+        n_dec: Decimal precision used for parallel estimation step.
         noise_var (float, optional): Fixed variance for likelihood calculation.
         
     Returns:
@@ -35,11 +49,11 @@ def run_sine_segmentation(data, model, n_samp, min_seg_len, K, n_decimal, noise_
     scores_all = []
 
     for pack in data:
-        d = pack[0]
-        tp = pack[1]
+        d = gpu_f(pack[0])
+        tp = gpu_f(pack[1])
         true_cp = pack[2]
 
-        scores = segment(gpu_f(d), gpu_f(tp), model, n_samp, min_seg_len, K, n_decimal, noise_var)
+        scores = segment(d, tp, model, n_samp, min_seg, K, n_dec, noise_var)
         pred_cp = get_changepoints(scores)
 
         scores_all.append(scores)
