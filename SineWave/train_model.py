@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 sys.path.append(os.path.abspath('..'))
 
 from augment import aug_add_noise, aug_subsample, aug_crop_start
-from model import LatentODEBuilder
+from latode_model import LatentODEBuilder
 from train import TrainingLoop
 from utils import gpu_f
 from sine_utils import SineSet

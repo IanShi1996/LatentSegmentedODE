@@ -9,7 +9,7 @@ import torch
 from sine_utils import run_sine_segmentation
 
 sys.path.append(os.path.abspath('..'))
-from model import LatentODEBuilder
+from latode_model import LatentODEBuilder
 
 np.random.seed(2547)
 

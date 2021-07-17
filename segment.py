@@ -82,8 +82,8 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
     seg_tp = tp[cps[0]:seg_len]
     seg_tp = seg_tp - seg_tp[0]
 
-    qz0_mean, qz0_logvar = model.get_latent_initial_state(batch_seg, seg_tp,
-                                                          mask=mask)
+    qz0_mean, qz0_logvar = model.get_latent_params(batch_seg, seg_tp,
+                                                   mask=mask)
 
     qz0_mean = qz0_mean.repeat_interleave(n_samp, 0)
     qz0_logvar = qz0_logvar.repeat_interleave(n_samp, 0)
@@ -102,7 +102,7 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
 
     seg_tps, tp_union_tt = get_tp_map(tp, seg_len, cps, precision)
 
-    pred_z = model.generate_from_latent(z0, tp_union_tt)
+    pred_z = model.generate_latent_traj(z0, tp_union_tt)
 
     tp_union = to_np(tp_union_tt)
     pred_z = recover_tps(pred_z, cps, seg_tps, tp_union, n_samp, precision)
