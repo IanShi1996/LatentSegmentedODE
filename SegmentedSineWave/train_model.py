@@ -30,12 +30,12 @@ parser.add_argument('--model_type', type=str, required=True,
                     choices=['gru', 'gruode', 'latode', 'segode'])
 parser.add_argument('--max_epochs', type=int, default=100)
 parser.add_argument('--batch_size', type=int, default=256)
-parser.add_argument('--lr', type=float, default=1e-3)
-parser.add_argument('--lr_decay', type=float, default=0.999)
+parser.add_argument('--lr', type=float, default=5e-3)
+parser.add_argument('--lr_decay', type=float, default=0.99)
 parser.add_argument('--del_t', action="store_true")
 
 parser.add_argument('--rec_dim', type=int, default=16)
-parser.add_argument('--rec_gru_units', type=int, default=200)
+parser.add_argument('--rec_gru_units', type=int, default=100)
 parser.add_argument('--rec_node_units', type=int, default=100)
 parser.add_argument('--rec_node_layers', type=int, default=2)
 parser.add_argument('--rec_node_act', type=str, default='Tanh')
@@ -62,8 +62,8 @@ parser.add_argument('--crop_min', type=int, default=30)
 parser.add_argument('--sample_min', type=int, default=50)
 parser.add_argument('--aug_noise_var', type=float, default=0.01)
 
-parser.add_argument('--kl_burn_max', type=int, default=1)
-parser.add_argument('--l_std', type=float, default=0.1)
+parser.add_argument('--kl_burn_max', type=int, default=5)
+parser.add_argument('--l_std', type=float, default=1)
 
 args = parser.parse_args()
 

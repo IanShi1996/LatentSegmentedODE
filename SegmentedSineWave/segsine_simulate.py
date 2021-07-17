@@ -52,7 +52,7 @@ def generate_resampled_set(n_traj, samp_range, max_end, amp_range, freq_range,
         for _ in range(n_traj):
             seg_data = np.array([])
             hyb_data = np.array([])
-            hyb_tps = np.array([])
+            seg_tps = np.array([])
             cps = []
 
             cp_counter = 0
