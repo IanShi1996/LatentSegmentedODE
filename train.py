@@ -151,7 +151,6 @@ class TrainLoopAR(TrainLoopBase):
             optimizer.zero_grad()
 
             for b_num, (b_data, b_tp, b_len) in enumerate(self.train_loader):
-                print("{}/{}".format(b_num, len(self.train_loader)))
                 optimizer.zero_grad()
 
                 d_tt = b_data.float().to(self.device)
@@ -266,8 +265,11 @@ class TrainLoopAE(TrainLoopBase):
                 if self.plot_func and plt_traj:
                     self.plot_val_traj(args['plt_args'])
                     plt.show()
+
                 self.train_loss_hist.append(self.train_loss_meter.avg)
+                self.train_elbo_hist.append(self.train_elbo_meter.avg)
                 self.val_loss_hist.append(self.val_loss_meter.val)
+                self.val_elbo_hist.append(self.val_elbo_meter.val)
 
             if verbose:
                 if scheduler:
@@ -305,8 +307,8 @@ class TrainLoopAE(TrainLoopBase):
                 losses.append(loss.item())
                 elbos.append(elbo.item())
 
-            self.train_elbo_meter.update(np.mean(elbos))
-            self.train_loss_meter.update(np.mean(losses))
+            self.val_elbo_meter.update(np.mean(elbos))
+            self.val_loss_meter.update(np.mean(losses))
 
     def plot_val_traj(self, args):
         raise NotImplementedError

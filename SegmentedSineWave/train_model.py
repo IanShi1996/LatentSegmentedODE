@@ -28,7 +28,7 @@ parser.add_argument('--data_file', type=str, required=True)
 parser.add_argument('--data_type', type=str, required=True, choices=['h', 's'])
 parser.add_argument('--model_type', type=str, required=True,
                     choices=['gru', 'gruode', 'latode', 'segode'])
-parser.add_argument('--max_epochs', type=int, default=100)
+parser.add_argument('--max_epochs', type=int, default=200)
 parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--lr', type=float, default=5e-3)
 parser.add_argument('--lr_decay', type=float, default=0.99)
@@ -136,7 +136,8 @@ train_args = {
     'l_std': args.l_std,
     'kl_burn_max': args.kl_burn_max,
     'aug_methods': aug_methods,
-    'aug_args': aug_args
+    'aug_args': aug_args,
+    'data_type': args.data_type
 }
 
 print(model_args, flush=True)
