@@ -15,7 +15,7 @@ sys.path.append(os.path.abspath('..'))
 
 from augment import aug_add_noise, aug_subsample, aug_crop_start
 from models import MODEL_CONSTR_DICT, MODEL_TRAIN_DICT
-from segsine_utils import SegmentedSineSet, HybridSineSet
+from hybsine_utils import SegmentedSineSet, HybridSineSet
 
 np.random.seed(2547)
 torch.manual_seed(2547)
@@ -153,7 +153,7 @@ train_loop.train(optimizer, train_args, scheduler)
 output_root = Path("./Models")
 output_root.mkdir(parents=True, exist_ok=True)
 
-model_name = "segsine_{}".format(args.model_type)
+model_name = "hybsine_{}".format(args.model_type)
 model_name += "_{}".format(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
 
 torch.save({

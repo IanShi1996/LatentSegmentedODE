@@ -244,7 +244,7 @@ class EncoderGRU(EncoderAR):
 
                 if self.delta_t:
                     # Append time delta
-                    prev_out = torch.cat([prev_out, x[:, i, -2:-1]], dim=-1)
+                    prev_out = torch.cat([prev_out, x[:, i, -1:]], dim=-1)
                 h = self.gru(prev_out, h)
             else:
                 h = self.gru(x[:, i, :], h)

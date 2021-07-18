@@ -4,7 +4,7 @@ import uuid
 
 import torch
 
-from segsine_simulate import generate_resampled_set, generate_test_set
+from hybsine_simulate import generate_resampled_set, generate_test_set
 
 parser = argparse.ArgumentParser(description="Generates Sine Wave data.")
 parser.add_argument('--amp_range_min', type=int, default=-8)
@@ -77,7 +77,7 @@ test_set = generate_test_set(data_args['n_traj_test'],
 out_dir = Path("./Data")
 out_dir.mkdir(parents=True, exist_ok=True)
 
-path_name = 'segsine_data_{}'.format(uuid.uuid4())
+path_name = 'hybsine_data_{}'.format(uuid.uuid4())
 
 out_path = out_dir / Path(path_name)
 
