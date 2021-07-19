@@ -45,7 +45,7 @@ def aug_subsample(data, time, lengths, args):
     Returns:
         torch.Tensor, torch.Tensor, torch.Tensor: Augmented data, time, lengths.
     """
-    if time.shape[1] <= args['sample_min']:
+    if min(lengths) <= args['sample_min']:
         return data, time, lengths
 
     n_samples = np.random.randint(args['sample_min'], time.shape[1])
@@ -55,9 +55,8 @@ def aug_subsample(data, time, lengths, args):
     time = time[:, sample_ind]
     data = data[:, sample_ind, :]
 
-    if lengths is not None:
-        for i in range(len(lengths)):
-            lengths[i] = len(np.where(sample_ind < lengths[i].item())[0])
+    for i in range(len(lengths)):
+        lengths[i] = len(np.where(sample_ind < lengths[i].item())[0])
 
     return data, time, lengths
 
@@ -78,16 +77,15 @@ def aug_crop_start(data, tps, lengths, args):
     Returns:
         torch.Tensor, torch.Tensor, torch.Tensor: Augmented data, time, lengths.
     """
-    if tps.shape[1] <= args['crop_min']:
+    if min(lengths) <= args['crop_min']:
         return data, tps, lengths
 
-    crop_ind = np.random.randint(args['crop_min'], tps.shape[1])
+    crop_ind = np.random.randint(0, min(lengths) - args['crop_min'])
 
-    tps = tps[:, -crop_ind:]
-    data = data[:, -crop_ind:, :]
+    tps = tps[:, crop_ind:]
+    data = data[:, crop_ind:, :]
 
-    if lengths is not None:
-        lengths = lengths - crop_ind
+    lengths = lengths - crop_ind
 
     return data, tps, lengths
 
@@ -98,7 +96,7 @@ def augment(data, tps, lengths, methods, args):
     Args:
         data (torch.Tensor): Data.
         tps (torch.Tensor): Time points.
-        lengths (torch.Tensor): Segment lengths. Set to None if N/A.
+        lengths (torch.Tensor): Segment lengths.
         methods (list of functions): Specific augmentations methods to apply.
         args (dict): Method-specific arguments which are passed through.
 

@@ -86,14 +86,14 @@ class TrainLoopBase:
         """
         if loss_meters is None:
             self.train_loss_meter = RunningAverageMeter()
-            self.val_loss_meter = RunningAverageMeter()
+            self.val_loss_meter = RunningAverageMeter(0.5)
         else:
             self.train_loss_meter = loss_meters[0]
             self.val_loss_meter = loss_meters[1]
 
         if elbo_meters is None:
             self.train_elbo_meter = RunningAverageMeter()
-            self.val_elbo_meter = RunningAverageMeter()
+            self.val_elbo_meter = RunningAverageMeter(0.5)
         else:
             self.train_elbo_meter = elbo_meters[0]
             self.val_elbo_meter = elbo_meters[1]
@@ -233,6 +233,7 @@ class TrainLoopAE(TrainLoopBase):
                 tp_union = torch.unique(tp_tt)
                 mask, exp_d, recov = self.generate_mask(d_tt, tp_tt, b_len,
                                                         tp_union)
+
                 mask = torch.Tensor(mask).float().to(self.device)
                 exp_d = exp_d.float().to(self.device)
 
@@ -240,7 +241,7 @@ class TrainLoopAE(TrainLoopBase):
 
                 select_mask = (mask == 1).unsqueeze(2)
                 p_flat = torch.masked_select(out[0], select_mask)
-                d_flat = torch.masked_select(exp_d[:, :, 0:1], select_mask)
+                d_flat = torch.masked_select(exp_d, select_mask)
 
                 elbo = get_elbo(d_flat, p_flat, out[1], out[2], args['l_std'],
                                 min(1, epoch / args['kl_burn_max']))
@@ -268,8 +269,8 @@ class TrainLoopAE(TrainLoopBase):
 
                 self.train_loss_hist.append(self.train_loss_meter.avg)
                 self.train_elbo_hist.append(self.train_elbo_meter.avg)
-                self.val_loss_hist.append(self.val_loss_meter.val)
-                self.val_elbo_hist.append(self.val_elbo_meter.val)
+                self.val_loss_hist.append(self.val_loss_meter.avg)
+                self.val_elbo_hist.append(self.val_elbo_meter.avg)
 
             if verbose:
                 if scheduler:
@@ -297,7 +298,7 @@ class TrainLoopAE(TrainLoopBase):
 
                 select_mask = (mask == 1).unsqueeze(2)
                 p_flat = torch.masked_select(out[0], select_mask)
-                d_flat = torch.masked_select(exp_d[:, :, 0:1], select_mask)
+                d_flat = torch.masked_select(exp_d, select_mask)
 
                 elbo = get_elbo(d_flat, p_flat, out[1], out[2],
                                 args['l_std'], 1)
@@ -330,3 +331,9 @@ class TrainLoopAE(TrainLoopBase):
             recover_arr.append(np.where(mask[i] == 1)[0])
 
         return mask, exp_data, recover_arr
+
+    @staticmethod
+    def select_from_flat(ind, out_data, lengths):
+        # Select relevant data from flat array
+        base = sum(lengths[:ind])
+        return out_data[base:base+lengths[ind]]
