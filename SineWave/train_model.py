@@ -71,7 +71,7 @@ model_args = {
 aug_args = {
     'crop_min': 20,
     'sample_min': 20,
-    'noise_var': 0.03,
+    'aug_noise_var': 0.03,
 }
 
 train_args = {
@@ -83,7 +83,7 @@ train_args = {
     'clip_norm': 5,
     'model_atol': 1e-4,
     'model_rtol': 1e-3,
-    'aug_methods': [aug_subsample],
+    'aug_methods': [aug_subsample, aug_crop_start, aug_add_noise],
     'aug_args': aug_args,
 }
 
@@ -114,7 +114,7 @@ train_loop.train(optimizer, train_args, scheduler)
 output_root = Path("./Models")
 output_root.mkdir(parents=True, exist_ok=True)
 
-model_name = "sine_lode_" + "_".join(args.data_file.split("_")[2:])
+model_name = "sine_lode_" + args.data_path.split("/")[-1]
 model_name += "_{}".format(datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
 
 torch.save({

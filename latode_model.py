@@ -204,7 +204,8 @@ class NeuralODE(nn.Module):
         Returns:
             torch.Tensor: Result of ode solve from initial state.
         """
-        z = odeint(self.nodef, z0, ts, rtol=rtol, atol=atol, method='dopri5')
+        z = odeint(self.nodef, z0, ts, rtol=rtol, atol=atol, method='dopri5',
+                   adjoint_options=dict(norm="seminorm"))
         return z.permute(1, 0, 2)
 
 
