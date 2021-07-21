@@ -215,7 +215,6 @@ class TrainLoopAE(TrainLoopBase):
 
     def train(self, optimizer, args, scheduler=None, verbose=True,
               plt_traj=False, plt_loss=False):
-
         for epoch in range(1, args['max_epochs'] + 1):
             optimizer.zero_grad()
 
@@ -231,7 +230,12 @@ class TrainLoopAE(TrainLoopBase):
                 tp_tt = b_tp.float().to(self.device)
 
                 tp_union = torch.unique(tp_tt)
-                mask, exp_d, recov = self.generate_mask(d_tt, tp_tt, b_len,
+
+                if args['aligned_data']:
+                    mask, exp_d, _ = self.generate_mask_aligned(d_tt, b_len,
+                                                                tp_union)
+                else:
+                    mask, exp_d, _ = self.generate_mask(d_tt, tp_tt, b_len,
                                                         tp_union)
 
                 mask = torch.Tensor(mask).float().to(self.device)
@@ -289,8 +293,14 @@ class TrainLoopAE(TrainLoopBase):
                 tp_tt = b_tp.float().to(self.device)
 
                 tp_union = torch.unique(tp_tt)
-                mask, exp_d, recov = self.generate_mask(d_tt, tp_tt, b_len,
+
+                if args['aligned_data']:
+                    mask, exp_d, _ = self.generate_mask_aligned(d_tt, b_len,
+                                                                tp_union)
+                else:
+                    mask, exp_d, _ = self.generate_mask(d_tt, tp_tt, b_len,
                                                         tp_union)
+
                 mask = torch.Tensor(mask).float().to(self.device)
                 exp_d = exp_d.float().to(self.device)
 
@@ -316,24 +326,85 @@ class TrainLoopAE(TrainLoopBase):
 
     @staticmethod
     def generate_mask(data, tps, length, tp_union):
+        """Generates mask to process irregularly sampled data.
+
+        Converts irregularly observed data by mapping each observation in a
+        data trajectory its position in the union of all times of observation.
+        This method is slow and should be optimized.
+
+        Outputs a binary array mask of shape B x L, where B is batch size, and
+        L is the length of tp_union. Mask denotes if data is observed at the
+        particular time in the timepoint union.
+
+        Outputs an expanded data tensor which inserts 0's in each data
+        trajectory at times where it is not observed in the timepoint union.
+
+        Finally, outputs the indices in the timepoint union where each data
+        trajectory is observed, used for later reconstruction.
+
+        Args:
+            data (torch.Tensor): Input data.
+            tps (torch.Tensor): Times of data observation.
+            length (list of int): Number of samples per trajectory.
+            tp_union (torch.Tensor): Union of all times of observation.
+
+        Returns:
+            np.ndarray, torch.Tensor, list of np.ndarray: mask, exp_data, r_arr.
+        """
         tp_map = {tp_union[i].item(): i for i in range(len(tp_union))}
 
-        mask = np.zeros((data.size(0), tp_union.size(0)))
-        exp_data = torch.zeros((data.size(0), tp_union.size(0), data.size(2)))
-        recover_arr = []
+        mask = np.zeros((data.shape[0], tp_union.shape[0]))
+        e_data = torch.zeros((data.shape[0], tp_union.shape[0], data.shape[2]))
+        e_data = e_data.to(data.device)
+        r_arr = []
 
         for i in range(len(mask)):
-            for j in range(length[i]):
-                ind = tp_map[tps[i][j].item()]
+            inds = [tp_map[tps[i][j].item()] for j in range(length[i])]
+            mask[i, inds] = 1
+            e_data[i, inds] = data[i, :length[i]]
+            r_arr.append(np.where(mask[i] == 1)[0])
 
-                mask[i, ind] = 1
-                exp_data[i, ind] = data[i, j]
-            recover_arr.append(np.where(mask[i] == 1)[0])
-
-        return mask, exp_data, recover_arr
+        return mask, e_data, r_arr
 
     @staticmethod
-    def select_from_flat(ind, out_data, lengths):
-        # Select relevant data from flat array
+    def generate_mask_aligned(data, length, tp_union):
+        """Generates mask assuming aligned data.
+
+        Generates mask for data which is regularly sampled, but contains
+        ragged ends (sequences are of different length). Should result in
+        identical output to generic mask generator, but much faster.
+
+        Args:
+            data (torch.Tensor): Input data.
+            length (list of int): Number of samples per trajectory.
+            tp_union (torch.Tensor): Union of all times of observation.
+
+        Returns:
+            np.ndarray, torch.Tensor, list of np.ndarray: mask, exp_data, r_arr.
+        """
+        mask = np.zeros((data.shape[0], tp_union.shape[0]))
+        e_data = torch.zeros((data.shape[0], tp_union.shape[0], data.shape[2]))
+        e_data = e_data.to(data.device)
+        r_arr = []
+
+        for i, l in enumerate(length):
+            mask[i, :l] = 1
+            e_data[i, :l] = data[i, :l]
+            r_arr.append(np.where(mask[i] == 1)[0])
+
+        return mask, e_data, r_arr
+
+    @staticmethod
+    def select_from_flat(ind, flat_data, lengths):
+        """Selects trajectory from flattened array by index.
+
+        Args:
+            ind (int): Index of desired trajectory.
+            flat_data (torch.Tensor): Flattened 1-D Tensor of trajectories.
+            lengths (list of int): Number of samples per trajectory.
+
+        Returns:
+            torch.Tensor: Trajectory at index.
+        """
         base = sum(lengths[:ind])
-        return out_data[base:base+lengths[ind]]
+        return flat_data[base:base+lengths[ind]]

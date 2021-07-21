@@ -8,14 +8,14 @@ from pathlib import Path
 import numpy as np
 
 import torch
-import torch.optim as optim
+from torch.optim import Adamax
+from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
-
 sys.path.append(os.path.abspath('..'))
 
 from augment import aug_add_noise, aug_subsample, aug_crop_start
-from latode_model import LatentODEBuilder
-from train import TrainingLoop
+from models import LatentODEBuilder
+from train import TrainLoopAE
 from utils import gpu_f
 from sine_utils import SineSet
 
@@ -46,45 +46,27 @@ val_time_tt = gpu_f(val_time)
 train_dataset = SineSet(train_data_tt, train_time_tt)
 val_dataset = SineSet(val_data_tt, val_time_tt)
 
-batch_size = 512
-
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(train_dataset, batch_size=len(val_dataset))
 
 model_args = {
     'obs_dim': 1,
-    'rec_latent_dim': 8,
-    'node_latent_dim': 4,
-    
-    'rec_gru_unit': 100,
-    'rec_node_hidden': 100,
-    'rec_node_layer': 2,
+    'rec_dim': 8,
+    'node_dim': 4,
+
+    'rec_gru_units': 100,
+    'rec_node_units': 100,
+    'rec_node_layers': 2,
     'rec_node_act': 'Tanh',
-    
-    'latent_node_hidden': 100,
-    'latent_node_layer': 2,
+    'rec_out_units': 100,
+
+    'latent_node_units': 100,
+    'latent_node_layers': 2,
     'latent_node_act': 'Tanh',
-    
+
     'dec_type': 'NN',
-    'dec_hidden': 100,
-    'dec_layer': 2,
+    'dec_units': 100,
+    'dec_layers': 2,
     'dec_act': 'ReLU',
 }
-
-model = LatentODEBuilder(**model_args).build_latent_ode().to(device)
-
-main = TrainingLoop(model, train_loader, val_loader)
-
-total_iters = 14000
-iters_per_epoch = generator.n_traj[0] // batch_size
-n_epochs = total_iters // iters_per_epoch
-
-target_decay = 0.98 ** 240
-adjusted_decay = target_decay ** (1 / n_epochs)
-
-parameters = (model.parameters())
-optimizer = optim.Adamax(parameters, lr=5e-3)
-scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, adjusted_decay)
 
 aug_args = {
     'crop_min': 20,
@@ -93,17 +75,37 @@ aug_args = {
 }
 
 train_args = {
-    'max_epoch': n_epochs,
+    'aligned_data': True,
+    'lr': 5e-3,
+    'batch_size': 512,
     'l_std': 1,
-    'kl_burn': 50,
+    'kl_burn_max': 50,
     'clip_norm': 5,
     'model_atol': 1e-4,
     'model_rtol': 1e-3,
-    'aug_methods': [aug_add_noise, aug_subsample, aug_crop_start],
+    'aug_methods': [aug_subsample],
     'aug_args': aug_args,
 }
 
-main.train(optimizer, train_args, scheduler)
+total_iters = 14000
+iters_per_epoch = generator.n_traj[0] // train_args['batch_size']
+train_args['max_epochs'] = total_iters // iters_per_epoch
+
+target_decay = 0.98 ** 240
+train_args['lr_decay'] = target_decay ** (1 / train_args['max_epochs'])
+
+train_loader = DataLoader(train_dataset, batch_size=train_args['batch_size'],
+                          shuffle=True)
+val_loader = DataLoader(train_dataset, batch_size=len(val_dataset))
+
+model = LatentODEBuilder(model_args).build_model().to(device)
+
+parameters = (model.parameters())
+optimizer = Adamax(parameters, lr=train_args['lr'])
+scheduler = ExponentialLR(optimizer, train_args['lr_decay'])
+
+train_loop = TrainLoopAE(model, train_loader, val_loader, device)
+train_loop.train(optimizer, train_args, scheduler)
 
 output_root = Path("./Models")
 output_root.mkdir(parents=True, exist_ok=True)

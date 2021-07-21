@@ -19,13 +19,15 @@ class SineSet(Dataset):
         self.data = data
         self.time = time
 
+        self.lengths = [len(d) for d in data]
+
     def __len__(self):
         """Return length of dataset."""
         return len(self.data)
 
     def __getitem__(self, idx):
         """Get data and timepoints by index."""
-        return self.data[idx], self.time
+        return self.data[idx], self.time, self.lengths[idx]
 
 
 def run_sine_segmentation(data, model, n_samp, min_seg, K, n_dec, noise_var):
