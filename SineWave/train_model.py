@@ -25,10 +25,10 @@ torch.manual_seed(2547)
 device = torch.device('cuda:0')
 
 parser = argparse.ArgumentParser(description="Trains model on Sine Wave data.")
-parser.add_argument('--data_file', type=str)
+parser.add_argument('--data_path', type=str)
 args = parser.parse_args()
 
-data_path = Path("./Data/Train") / Path(args.data_file)
+data_path = Path(args.data_path)
 generator = torch.load(data_path)['generator']
 
 train_time, train_data = generator.get_train_set()
@@ -103,6 +103,10 @@ model = LatentODEBuilder(model_args).build_model().to(device)
 parameters = (model.parameters())
 optimizer = Adamax(parameters, lr=train_args['lr'])
 scheduler = ExponentialLR(optimizer, train_args['lr_decay'])
+
+print(model_args, flush=True)
+print(train_args, flush=True)
+print(args.data_path, flush=True)
 
 train_loop = TrainLoopAE(model, train_loader, val_loader, device)
 train_loop.train(optimizer, train_args, scheduler)
