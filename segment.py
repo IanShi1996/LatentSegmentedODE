@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 from scipy.special import logsumexp
+
+from estimators import reparameterize
 from utils import to_np
 
 
@@ -17,22 +19,8 @@ def generate_epsilon(n_samples, latent_dim):
     return torch.randn((n_samples, latent_dim))
 
 
-def reparameterize(epsilon, qz0_mean, qz0_logvar):
-    """Reparameterize using mean and variance with given noise.
-
-    Args:
-        epsilon (torch.Tensor): Noise from zero one gaussian.
-        qz0_mean (torch.Tensor): Latent mean vector.
-        qz0_logvar (torch.Tensor): Latent log variance vector.
-
-    Returns:
-        torch.Tensor: Reparameterized latent initial states.
-    """
-    return epsilon * torch.exp(.5 * qz0_logvar) + qz0_mean
-
-
 def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
-                            l_var=1, fixed_eps=None):
+                            l_var=1):
     """Estimate log marginal likelihood through parallel MC sampling.
 
     Computes Monte Carlo importance sampling estimation of log p(x).
@@ -57,9 +45,6 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
     Performance seems to be best when this is set to match the variance used
     during model training.
 
-    Empirical testing shows that the K bound can be lowered if a fixed noise
-    is used. This is optional.
-
     Args:
         data (torch.Tensor): Tensor of input data points.
         tp (torch.Tensor): Global tensor of timepoints.
@@ -69,7 +54,6 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
         n_samp (int): Number of MC samples to take.
         precision (int): Decimal precision used to calculate time deltas.
         l_var (float): Fixed variance used to calculate loss.
-        fixed_eps (torch.Tensor): Noise used for reparameterization.
 
     Returns:
         list of float: Estimated log p(x) of segment.
@@ -88,12 +72,7 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
     qz0_mean = qz0_mean.repeat_interleave(n_samp, 0)
     qz0_logvar = qz0_logvar.repeat_interleave(n_samp, 0)
 
-    if fixed_eps is not None:
-        eps_repeat = torch.cat([fixed_eps] * int(qz0_mean.size(0) / n_samp))
-        z0 = reparameterize(eps_repeat, qz0_mean, qz0_logvar)
-        eps = fixed_eps
-    else:
-        z0, eps = model.reparameterize(qz0_mean, qz0_logvar)
+    z0, eps = reparameterize(qz0_mean, qz0_logvar)
 
     qz0_var = torch.exp(.5 * qz0_logvar)
 
@@ -118,12 +97,8 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
         likelihood = likelihood.sum(-1).sum(-1)
 
         # Compute variation posterior: q(z|x)
-        if fixed_eps is not None:
-            qz = torch.sum(-0.5 * eps ** 2 -
-                           torch.log(qz0_var[i*n_samp:i*n_samp+n_samp]), -1)
-        else:
-            qz = torch.sum(-0.5 * eps[i*n_samp:i*n_samp+n_samp] ** 2 -
-                           torch.log(qz0_var[i*n_samp:i*n_samp+n_samp]), -1)
+        qz = torch.sum(-0.5 * eps[i*n_samp:i*n_samp+n_samp] ** 2 -
+                       torch.log(qz0_var[i*n_samp:i*n_samp+n_samp]), -1)
 
         # Compute parameter prior: p(z)
         pz = torch.sum(-0.5 * z0[i*n_samp:i*n_samp+n_samp] ** 2, -1)
@@ -136,8 +111,8 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
     return mc_ests
 
 
-def segment(data, tp, model, n_samp, min_seg_len, K, n_decimal,
-            noise_var=1, fixed_noise=False, latent_dim=None):
+def segment(data, tp, model, n_samp, min_seg_len, K, n_dec,
+            l_var=1, latent_dim=None):
     """Perform segmentation using OPTSEG or PELT algorithm.
 
     Computes segmentation of a time series using an optimal partitioning
@@ -165,11 +140,6 @@ def segment(data, tp, model, n_samp, min_seg_len, K, n_decimal,
     Setting the minimum segmentation length will ignore segments less than the
     length, providing marginal speedup.
 
-    The scoring function has been switched to the parallel implementation.
-
-    Empirically, using a fixed point noise has shown to result in better
-    performance.
-
     Args:
         data (torch.Tensor): Input data.
         tp (torch.Tensor): Observation times of input data.
@@ -177,9 +147,8 @@ def segment(data, tp, model, n_samp, min_seg_len, K, n_decimal,
         n_samp (int): Number of MC samples used to estimate score.
         min_seg_len (int): Minimum length of segment to consider.
         K (float): Term used to relax pruning condition.
-        n_decimal (int): Decimal precision used in timepoint delta calculation.
-        noise_var (float): Fixed variance used to calculate loss.
-        fixed_noise (boolean): Whether fixed noise should be used.
+        n_dec (int): Decimal precision used in timepoint delta calculation.
+        l_var (float): Fixed variance used to calculate loss.
         latent_dim (int): Dim. of latent. Only required is fixed noise is used.
 
     Returns:
@@ -192,11 +161,6 @@ def segment(data, tp, model, n_samp, min_seg_len, K, n_decimal,
 
     min_score = np.zeros(length)
     valid_cp = [0]
-
-    if fixed_noise:
-        eps = generate_epsilon(n_samp, latent_dim).to(data.device)
-    else:
-        eps = None
 
     for seg_len in range(1, length):
         segment_score = np.ones(length) * np.inf
@@ -211,7 +175,7 @@ def segment(data, tp, model, n_samp, min_seg_len, K, n_decimal,
             continue
 
         mc_est = parallel_estimate_logpx(data, tp, seg_len, seg_cp, model,
-                                         n_samp, n_decimal, noise_var, eps)
+                                         n_samp, n_dec, l_var)
 
         for i in range(len(mc_est)):
             cp = seg_cp[i]

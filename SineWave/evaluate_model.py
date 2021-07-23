@@ -24,7 +24,7 @@ parser.add_argument("--model_file", type=str)
 parser.add_argument("--data_file", type=str)
 parser.add_argument("--n_samp", type=int, default=100)
 parser.add_argument("--min_seg_len", type=int, default=10)
-parser.add_argument("--K", type=float, default=100)
+parser.add_argument("--K", type=float, default=200)
 parser.add_argument("--n_dec", type=int, default=2)
 parser.add_argument("--l_var", type=float, default=1)
 args = parser.parse_args()
@@ -36,7 +36,7 @@ output_root = Path("./Results")
 save_data = torch.load(model_root / Path(args.model_file))
 
 model_args = save_data['model_args']
-model = LatentODEBuilder(**model_args).build_model().to(device)
+model = LatentODEBuilder(model_args).build_model().to(device)
 model.load_state_dict(save_data['model_state_dict'])
 
 
@@ -47,7 +47,7 @@ test_args = {
     'n_samp': args.n_samp,
     'min_seg_len': args.min_seg_len,
     'K': args.K,
-    'n_decimal': args.n_dec,
+    'n_dec': args.n_dec,
     'l_var': args.l_var
 }
 
