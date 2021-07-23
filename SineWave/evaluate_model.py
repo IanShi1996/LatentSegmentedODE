@@ -9,7 +9,7 @@ import torch
 from sine_utils import run_sine_segmentation
 
 sys.path.append(os.path.abspath('..'))
-from latode_model import LatentODEBuilder
+from models import LatentODEBuilder
 
 np.random.seed(2547)
 
@@ -26,7 +26,7 @@ parser.add_argument("--n_samp", type=int, default=100)
 parser.add_argument("--min_seg_len", type=int, default=10)
 parser.add_argument("--K", type=float, default=100)
 parser.add_argument("--n_dec", type=int, default=2)
-parser.add_argument("--noise_var", type=float, default=1)
+parser.add_argument("--l_var", type=float, default=1)
 args = parser.parse_args()
 
 data_root = Path("./Data/Test")
@@ -36,7 +36,7 @@ output_root = Path("./Results")
 save_data = torch.load(model_root / Path(args.model_file))
 
 model_args = save_data['model_args']
-model = LatentODEBuilder(**model_args).build_latent_ode().to(device)
+model = LatentODEBuilder(**model_args).build_model().to(device)
 model.load_state_dict(save_data['model_state_dict'])
 
 
@@ -48,7 +48,7 @@ test_args = {
     'min_seg_len': args.min_seg_len,
     'K': args.K,
     'n_decimal': args.n_dec,
-    'noise_var': args.noise_var
+    'l_var': args.l_var
 }
 
 pred_all, scores_all = run_sine_segmentation(data, model, **test_args)

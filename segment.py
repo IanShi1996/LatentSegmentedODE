@@ -32,7 +32,7 @@ def reparameterize(epsilon, qz0_mean, qz0_logvar):
 
 
 def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
-                            noise_var=1, fixed_eps=None):
+                            l_var=1, fixed_eps=None):
     """Estimate log marginal likelihood through parallel MC sampling.
 
     Computes Monte Carlo importance sampling estimation of log p(x).
@@ -68,7 +68,7 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
         model (nn.Module): Latent NODE model used to evaluate scores.
         n_samp (int): Number of MC samples to take.
         precision (int): Decimal precision used to calculate time deltas.
-        noise_var (float): Fixed variance used to calculate loss.
+        l_var (float): Fixed variance used to calculate loss.
         fixed_eps (torch.Tensor): Noise used for reparameterization.
 
     Returns:
@@ -98,7 +98,7 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
     qz0_var = torch.exp(.5 * qz0_logvar)
 
     const = torch.from_numpy(np.array([2. * np.pi])).float().to(data.device)
-    const = torch.log(const) + np.log(noise_var)
+    const = torch.log(const) + np.log(l_var)
 
     seg_tps, tp_union_tt = get_tp_map(tp, seg_len, cps, precision)
 
@@ -114,7 +114,7 @@ def parallel_estimate_logpx(data, tp, seg_len, cps, model, n_samp, precision,
         data_seg = data[:, cps[i]:seg_len, :]
 
         # Compute data likelihood: p(x|z)
-        likelihood = -.5 * (const + (data_seg - pred_x) ** 2. / noise_var)
+        likelihood = -.5 * (const + (data_seg - pred_x) ** 2. / l_var)
         likelihood = likelihood.sum(-1).sum(-1)
 
         # Compute variation posterior: q(z|x)

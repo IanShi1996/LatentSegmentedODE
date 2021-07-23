@@ -30,7 +30,7 @@ class SineSet(Dataset):
         return self.data[idx], self.time, self.lengths[idx]
 
 
-def run_sine_segmentation(data, model, n_samp, min_seg, K, n_dec, noise_var):
+def run_sine_segmentation(data, model, n_samp, min_seg_len, K, n_dec, l_var):
     """Segmentation main loop for Sine Wave data.
     
     Runs segmentation and persists results.
@@ -39,10 +39,10 @@ def run_sine_segmentation(data, model, n_samp, min_seg, K, n_dec, noise_var):
         data (dict): Dict containing data, timepoints, and true changepoints.
         model (nn.Module): PyTorch Latent NODE model.
         n_samp (int): Number of MC samples to use to estimate log_px.
-        min_seg (int): Minimum length of valid segment for PELT.
+        min_seg_len (int): Minimum length of valid segment for PELT.
         K (float): Relaxation term on PELT penalty.
         n_dec: Decimal precision used for parallel estimation step.
-        noise_var (float, optional): Fixed variance for likelihood calculation.
+        l_var (float, optional): Variance for likelihood calculation.
         
     Returns:
         (list, list): List of predicted changepoints and score matrices.
@@ -55,7 +55,7 @@ def run_sine_segmentation(data, model, n_samp, min_seg, K, n_dec, noise_var):
         tp = gpu_f(pack[1])
         true_cp = pack[2]
 
-        scores = segment(d, tp, model, n_samp, min_seg, K, n_dec, noise_var)
+        scores = segment(d, tp, model, n_samp, min_seg_len, K, n_dec, l_var)
         pred_cp = get_changepoints(scores)
 
         scores_all.append(scores)
